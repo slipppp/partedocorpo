@@ -1,5 +1,5 @@
 -- ============================================
--- UI DE TESTE - SELECIONAR PARTE DO CORPO
+-- UI DE TESTE COM MODELO 3D REAL R15
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -7,6 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 -- ========== BIBLIOTECA UI SIMPLIFICADA ==========
 local Library = {}
@@ -28,7 +29,7 @@ end
 -- ========== FUNÇÕES DE DETECÇÃO ==========
 local function DetectCharacterType()
     local char = LocalPlayer.Character
-    if not char then return "R6" end
+    if not char then return "R15" end
     
     -- Verifica se tem partes R15
     local r15Parts = {"UpperTorso", "LowerTorso", "LeftUpperArm", "RightUpperArm", 
@@ -43,7 +44,251 @@ local function DetectCharacterType()
     return "R6"
 end
 
--- ========== CRIAR UI PRINCIPAL ==========
+-- ========== CRIAR VIEWPORT PARA MODELO 3D ==========
+local function CreateViewport(parent)
+    -- ViewportFrame para renderizar 3D
+    local viewport = Library:Create("ViewportFrame", {
+        BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+        BorderColor3 = Color3.fromRGB(40, 40, 50),
+        BorderSizePixel = 1,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        CurrentCamera = Instance.new("Camera"),
+    }, parent)
+    
+    -- Configurar câmera
+    local camera = viewport.CurrentCamera
+    camera.FieldOfView = 50
+    camera.CFrame = CFrame.new(0, 2, 5) * CFrame.Angles(-0.2, 0, 0)
+    
+    -- Iluminação
+    local light = Instance.new("PointLight")
+    light.Parent = camera
+    light.Brightness = 5
+    light.Range = 20
+    
+    return viewport
+end
+
+-- ========== CRIAR MODELO R15 REAL ==========
+local function CreateRealR15Character(viewport, characterType, onPartClick)
+    local parts = {}
+    local selectedPart = nil
+    local highlightObjects = {}
+    
+    -- Cores padrão R15
+    local colors = {
+        Head = Color3.fromRGB(220, 200, 180),
+        UpperTorso = Color3.fromRGB(180, 160, 200),
+        LowerTorso = Color3.fromRGB(160, 140, 180),
+        LeftUpperArm = Color3.fromRGB(180, 160, 140),
+        RightUpperArm = Color3.fromRGB(180, 160, 140),
+        LeftLowerArm = Color3.fromRGB(160, 140, 120),
+        RightLowerArm = Color3.fromRGB(160, 140, 120),
+        LeftHand = Color3.fromRGB(200, 180, 160),
+        RightHand = Color3.fromRGB(200, 180, 160),
+        LeftUpperLeg = Color3.fromRGB(140, 120, 100),
+        RightUpperLeg = Color3.fromRGB(140, 120, 100),
+        LeftLowerLeg = Color3.fromRGB(120, 100, 80),
+        RightLowerLeg = Color3.fromRGB(120, 100, 80),
+        LeftFoot = Color3.fromRGB(120, 100, 80),
+        RightFoot = Color3.fromRGB(120, 100, 80),
+    }
+    
+    -- Criar modelo
+    local function CreatePart(partName, size, cframe, color, isR15)
+        -- Criar parte com mesh ou block
+        local part = Instance.new("Part")
+        part.Name = partName
+        part.Size = size
+        part.CFrame = cframe
+        part.Color = color
+        part.Material = Enum.Material.SmoothPlastic
+        part.Anchored = true
+        part.CanCollide = false
+        part.Parent = viewport
+        
+        -- Adicionar mesh para parecer mais realista
+        if isR15 then
+            local mesh = Instance.new("SpecialMesh")
+            mesh.MeshType = Enum.MeshType.FileMesh
+            mesh.MeshId = "rbxassetid://" .. GetMeshId(partName)
+            mesh.Scale = size / 2
+            mesh.Parent = part
+        end
+        
+        -- Caixa de clique invisível (para interação)
+        local clickDetector = Instance.new("ClickDetector")
+        clickDetector.Parent = part
+        clickDetector.MaxActivationDistance = 100
+        
+        clickDetector.MouseClick:Connect(function()
+            if onPartClick then
+                onPartClick(partName)
+            end
+            HighlightPart(partName)
+        end)
+        
+        -- Highlight quando hover (usando um outline)
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = part
+        highlight.Enabled = false
+        highlight.FillColor = Color3.fromRGB(84, 101, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineTransparency = 0.3
+        
+        parts[partName] = {
+            part = part,
+            highlight = highlight,
+            originalColor = color,
+            clickDetector = clickDetector
+        }
+        
+        return part
+    end
+    
+    -- IDs de mesh para R15
+    local function GetMeshId(partName)
+        local meshes = {
+            Head = "http://www.roblox.com/asset/?id=47551917",
+            UpperTorso = "http://www.roblox.com/asset/?id=47224645",
+            LowerTorso = "http://www.roblox.com/asset/?id=47224645",
+            LeftUpperArm = "http://www.roblox.com/asset/?id=47230408",
+            RightUpperArm = "http://www.roblox.com/asset/?id=47230408",
+            LeftLowerArm = "http://www.roblox.com/asset/?id=47230408",
+            RightLowerArm = "http://www.roblox.com/asset/?id=47230408",
+            LeftHand = "http://www.roblox.com/asset/?id=47230408",
+            RightHand = "http://www.roblox.com/asset/?id=47230408",
+            LeftUpperLeg = "http://www.roblox.com/asset/?id=47230408",
+            RightUpperLeg = "http://www.roblox.com/asset/?id=47230408",
+            LeftLowerLeg = "http://www.roblox.com/asset/?id=47230408",
+            RightLowerLeg = "http://www.roblox.com/asset/?id=47230408",
+            LeftFoot = "http://www.roblox.com/asset/?id=47230408",
+            RightFoot = "http://www.roblox.com/asset/?id=47230408",
+        }
+        return meshes[partName] or "http://www.roblox.com/asset/?id=47230408"
+    end
+    
+    -- Criar personagem R15 completo
+    local function BuildR15()
+        local torsoCF = CFrame.new(0, 2, 0)
+        local leftCF = torsoCF * CFrame.new(-1.5, 0.5, 0)
+        local rightCF = torsoCF * CFrame.new(1.5, 0.5, 0)
+        
+        -- Cabeça
+        CreatePart("Head", Vector3.new(2, 2, 2), torsoCF * CFrame.new(0, 2.5, 0), colors.Head, true)
+        
+        -- Tronco superior
+        CreatePart("UpperTorso", Vector3.new(2.5, 1.5, 1.5), torsoCF * CFrame.new(0, 1.2, 0), colors.UpperTorso, true)
+        
+        -- Tronco inferior
+        CreatePart("LowerTorso", Vector3.new(2, 1.2, 1.5), torsoCF * CFrame.new(0, 0, 0), colors.LowerTorso, true)
+        
+        -- Braços superiores
+        CreatePart("LeftUpperArm", Vector3.new(1, 1.5, 1), leftCF * CFrame.new(0, 0.8, 0), colors.LeftUpperArm, true)
+        CreatePart("RightUpperArm", Vector3.new(1, 1.5, 1), rightCF * CFrame.new(0, 0.8, 0), colors.RightUpperArm, true)
+        
+        -- Braços inferiores
+        CreatePart("LeftLowerArm", Vector3.new(0.8, 1.2, 0.8), leftCF * CFrame.new(0, -0.2, 0), colors.LeftLowerArm, true)
+        CreatePart("RightLowerArm", Vector3.new(0.8, 1.2, 0.8), rightCF * CFrame.new(0, -0.2, 0), colors.RightLowerArm, true)
+        
+        -- Mãos
+        CreatePart("LeftHand", Vector3.new(0.6, 0.6, 0.6), leftCF * CFrame.new(0, -1, 0), colors.LeftHand, true)
+        CreatePart("RightHand", Vector3.new(0.6, 0.6, 0.6), rightCF * CFrame.new(0, -1, 0), colors.RightHand, true)
+        
+        -- Pernas superiores
+        CreatePart("LeftUpperLeg", Vector3.new(1, 1.5, 1), torsoCF * CFrame.new(-0.8, -1.2, 0), colors.LeftUpperLeg, true)
+        CreatePart("RightUpperLeg", Vector3.new(1, 1.5, 1), torsoCF * CFrame.new(0.8, -1.2, 0), colors.RightUpperLeg, true)
+        
+        -- Pernas inferiores
+        CreatePart("LeftLowerLeg", Vector3.new(0.8, 1.5, 0.8), torsoCF * CFrame.new(-0.8, -2.5, 0), colors.LeftLowerLeg, true)
+        CreatePart("RightLowerLeg", Vector3.new(0.8, 1.5, 0.8), torsoCF * CFrame.new(0.8, -2.5, 0), colors.RightLowerLeg, true)
+        
+        -- Pés
+        CreatePart("LeftFoot", Vector3.new(1.2, 0.5, 1.5), torsoCF * CFrame.new(-0.8, -3.5, 0.5), colors.LeftFoot, true)
+        CreatePart("RightFoot", Vector3.new(1.2, 0.5, 1.5), torsoCF * CFrame.new(0.8, -3.5, 0.5), colors.RightFoot, true)
+    end
+    
+    -- Criar personagem R6
+    local function BuildR6()
+        local torsoCF = CFrame.new(0, 2, 0)
+        
+        -- Cabeça
+        CreatePart("Head", Vector3.new(2, 2, 2), torsoCF * CFrame.new(0, 2.5, 0), Color3.fromRGB(220, 200, 180), false)
+        
+        -- Torso
+        CreatePart("Torso", Vector3.new(3, 2.5, 1.5), torsoCF * CFrame.new(0, 1.2, 0), Color3.fromRGB(180, 160, 200), false)
+        
+        -- Braços
+        CreatePart("LeftArm", Vector3.new(1.2, 2.5, 1.2), torsoCF * CFrame.new(-2.5, 1.2, 0), Color3.fromRGB(180, 160, 140), false)
+        CreatePart("RightArm", Vector3.new(1.2, 2.5, 1.2), torsoCF * CFrame.new(2.5, 1.2, 0), Color3.fromRGB(180, 160, 140), false)
+        
+        -- Pernas
+        CreatePart("LeftLeg", Vector3.new(1.5, 2.5, 1.5), torsoCF * CFrame.new(-1, -0.5, 0), Color3.fromRGB(140, 120, 100), false)
+        CreatePart("RightLeg", Vector3.new(1.5, 2.5, 1.5), torsoCF * CFrame.new(1, -0.5, 0), Color3.fromRGB(140, 120, 100), false)
+    end
+    
+    -- Construir personagem
+    if characterType == "R15" then
+        BuildR15()
+    else
+        BuildR6()
+    end
+    
+    -- Função para destacar parte
+    function HighlightPart(partName)
+        -- Resetar todos os highlights
+        for _, data in pairs(parts) do
+            data.highlight.Enabled = false
+        end
+        
+        -- Destacar parte selecionada
+        if partName and parts[partName] then
+            local data = parts[partName]
+            data.highlight.Enabled = true
+            selectedPart = partName
+            
+            -- Efeito de pulso com Tween
+            spawn(function()
+                local tween = TweenService:Create(data.highlight, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                    FillTransparency = 0.2
+                })
+                tween:Play()
+                wait(0.5)
+                tween:Cancel()
+                data.highlight.FillTransparency = 0.5
+            end)
+        end
+    end
+    
+    -- Rotacionar modelo
+    local rotation = 0
+    RunService.Heartbeat:Connect(function(dt)
+        rotation = rotation + dt * 0.5
+        for _, data in pairs(parts) do
+            if data.part then
+                -- Rotacionar gradualmente
+                data.part.CFrame = data.part.CFrame * CFrame.Angles(0, dt * 0.5, 0)
+            end
+        end
+    end)
+    
+    -- Funções públicas
+    return {
+        HighlightPart = HighlightPart,
+        GetSelected = function() return selectedPart end,
+        GetParts = function()
+            local partList = {}
+            for name, _ in pairs(parts) do
+                table.insert(partList, name)
+            end
+            return partList
+        end
+    }
+end
+
+-- ========== CRIAR UI ==========
 local ScreenGui = Library:Create("ScreenGui", {
     Name = "TestUI",
     ResetOnSpawn = false,
@@ -51,50 +296,15 @@ local ScreenGui = Library:Create("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Global,
 }, game:GetService("CoreGui"))
 
--- Fazer dragável
-local function MakeDraggable(gui)
-    local dragging = false
-    local dragInput = nil
-    local dragStart = nil
-    local startPos = nil
-    
-    gui.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = gui.Position
-        end
-    end)
-    
-    gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            gui.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
 -- ========== MAIN FRAME ==========
 local MainFrame = Library:Create("Frame", {
-    Name = "MainFrame",
     BackgroundColor3 = Color3.fromRGB(15, 15, 20),
     BorderColor3 = Color3.fromRGB(50, 50, 60),
     BorderSizePixel = 1,
-    Position = UDim2.new(0.5, -350, 0.5, -250),
-    Size = UDim2.new(0, 700, 0, 500),
+    Position = UDim2.new(0.5, -400, 0.5, -300),
+    Size = UDim2.new(0, 800, 0, 600),
     ClipsDescendants = true,
 }, ScreenGui)
-
-MakeDraggable(MainFrame)
 
 -- Título
 Library:Create("TextLabel", {
@@ -102,63 +312,48 @@ Library:Create("TextLabel", {
     Position = UDim2.new(0.5, 0, 0, 10),
     Size = UDim2.new(1, -20, 0, 30),
     Font = Enum.Font.Ubuntu,
-    Text = "🎯 Aimbot Test - Character Selector",
+    Text = "🎯 3D Character Selector",
     TextColor3 = Color3.fromRGB(255, 255, 255),
     TextSize = 18,
     TextXAlignment = Enum.TextXAlignment.Left,
     AnchorPoint = Vector2.new(0.5, 0),
 }, MainFrame)
 
--- Linha separadora
-Library:Create("Frame", {
-    BackgroundColor3 = Color3.fromRGB(50, 50, 60),
-    Position = UDim2.new(0, 10, 0, 45),
-    Size = UDim2.new(1, -20, 0, 1),
-}, MainFrame)
-
--- ========== LADO ESQUERDO - CONFIGURAÇÕES ==========
+-- ========== LADO ESQUERDO ==========
 local LeftPanel = Library:Create("Frame", {
     BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0, 55),
-    Size = UDim2.new(0, 340, 1, -65),
+    Position = UDim2.new(0, 10, 0, 50),
+    Size = UDim2.new(0, 250, 1, -60),
 }, MainFrame)
 
--- Container de seleção
-local SelectorContainer = Library:Create("Frame", {
+-- Info
+Library:Create("TextLabel", {
     BackgroundColor3 = Color3.fromRGB(20, 20, 25),
     BorderColor3 = Color3.fromRGB(40, 40, 50),
     BorderSizePixel = 1,
     Position = UDim2.new(0, 0, 0, 0),
-    Size = UDim2.new(1, 0, 0, 280),
-    ClipsDescendants = true,
+    Size = UDim2.new(1, 0, 0, 120),
+    Font = Enum.Font.Ubuntu,
+    Text = "💡 Click on any part\n   of the 3D character\n   to select it\n\n🔄 Character rotates\n   for better view",
+    TextColor3 = Color3.fromRGB(150, 150, 150),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
 }, LeftPanel)
 
--- Título do seletor
-Library:Create("TextLabel", {
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0.5, 0, 0, 8),
-    Size = UDim2.new(1, -20, 0, 25),
-    Font = Enum.Font.Ubuntu,
-    Text = "🎯 Select Body Part",
-    TextColor3 = Color3.fromRGB(200, 200, 200),
-    TextSize = 16,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    AnchorPoint = Vector2.new(0.5, 0),
-}, SelectorContainer)
-
--- Dropdown personalizado
+-- Dropdown
 local DropdownContainer = Library:Create("Frame", {
     BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0, 40),
-    Size = UDim2.new(1, -20, 0, 45),
-}, SelectorContainer)
+    Position = UDim2.new(0, 0, 0, 130),
+    Size = UDim2.new(1, 0, 0, 45),
+}, LeftPanel)
 
 Library:Create("TextLabel", {
     BackgroundTransparency = 1,
     Position = UDim2.new(0, 5, 0, 0),
     Size = UDim2.new(1, 0, 0, 20),
     Font = Enum.Font.Ubuntu,
-    Text = "Part:",
+    Text = "Or select from list:",
     TextColor3 = Color3.fromRGB(150, 150, 150),
     TextSize = 14,
     TextXAlignment = Enum.TextXAlignment.Left,
@@ -200,7 +395,7 @@ local DropdownScroll = Library:Create("ScrollingFrame", {
     BorderColor3 = Color3.fromRGB(40, 40, 50),
     BorderSizePixel = 1,
     Position = UDim2.new(0, 0, 0, 44),
-    Size = UDim2.new(1, 0, 0, 120),
+    Size = UDim2.new(1, 0, 0, 150),
     Visible = false,
     CanvasSize = UDim2.new(0, 0, 0, 0),
     ScrollBarThickness = 2,
@@ -213,229 +408,41 @@ local DropdownList = Library:Create("UIListLayout", {
     Padding = UDim.new(0, 2),
 }, DropdownScroll)
 
--- ========== CRIAR BONECO ==========
-local function CreateCharacterPreview(parent, characterType, onPartClick)
-    local previewFrame = Library:Create("Frame", {
-        BackgroundColor3 = Color3.fromRGB(20, 20, 25),
-        BorderColor3 = Color3.fromRGB(40, 40, 50),
-        BorderSizePixel = 1,
-        Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(1, 0, 1, 0),
-        ClipsDescendants = true,
-    }, parent)
-    
-    -- Título
-    Library:Create("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0.5, 0, 0, 8),
-        Size = UDim2.new(1, -20, 0, 25),
-        Font = Enum.Font.Ubuntu,
-        Text = "👤 " .. characterType .. " Character",
-        TextColor3 = Color3.fromRGB(200, 200, 200),
-        TextSize = 16,
-        TextXAlignment = Enum.TextXAlignment.Center,
-        AnchorPoint = Vector2.new(0.5, 0),
-    }, previewFrame)
-    
-    -- Container do boneco
-    local avatarContainer = Library:Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 10, 0, 35),
-        Size = UDim2.new(1, -20, 1, -45),
-    }, previewFrame)
-    
-    -- Mapa das partes
-    local partHighlights = {}
-    local selectedPart = nil
-    
-    -- Função para criar uma parte
-    local function CreatePart(name, color, x, y, w, h, parent)
-        local part = Library:Create("TextButton", {
-            BackgroundColor3 = color,
-            BorderColor3 = Color3.fromRGB(60, 60, 70),
-            BorderSizePixel = 1,
-            Position = UDim2.new(x - w/2, 0, y - h/2, 0),
-            Size = UDim2.new(w, 0, h, 0),
-            Text = "",
-            AutoButtonColor = false,
-            Name = name,
-            ZIndex = 2,
-        }, parent)
-        
-        -- Label para mostrar nome
-        local label = Library:Create("TextLabel", {
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-            Size = UDim2.new(1, 0, 1, 0),
-            Font = Enum.Font.Ubuntu,
-            Text = name,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 7,
-            TextScaled = true,
-            TextWrapped = true,
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Visible = false,
-            ZIndex = 3,
-        }, part)
-        
-        -- Hover
-        part.MouseEnter:Connect(function()
-            label.Visible = true
-            if selectedPart ~= name then
-                part.BorderColor3 = Color3.fromRGB(255, 255, 255)
-                part.BorderSizePixel = 2
-            end
-        end)
-        
-        part.MouseLeave:Connect(function()
-            label.Visible = false
-            if selectedPart ~= name then
-                part.BorderColor3 = Color3.fromRGB(60, 60, 70)
-                part.BorderSizePixel = 1
-            end
-        end)
-        
-        -- Click
-        part.MouseButton1Down:Connect(function()
-            if onPartClick then
-                onPartClick(name)
-            end
-            HighlightPart(name)
-        end)
-        
-        partHighlights[name] = {
-            part = part,
-            originalColor = color,
-            label = label
-        }
-        
-        return part
-    end
-    
-    -- Função para destacar
-    function HighlightPart(name)
-        -- Reset
-        for _, data in pairs(partHighlights) do
-            data.part.BackgroundColor3 = data.originalColor
-            data.part.BorderColor3 = Color3.fromRGB(60, 60, 70)
-            data.part.BorderSizePixel = 1
-            data.label.Visible = false
-        end
-        
-        -- Highlight
-        if name and partHighlights[name] then
-            local data = partHighlights[name]
-            data.part.BackgroundColor3 = Color3.fromRGB(84, 101, 255)
-            data.part.BorderColor3 = Color3.fromRGB(255, 255, 255)
-            data.part.BorderSizePixel = 3
-            data.label.Visible = true
-            selectedPart = name
-        end
-    end
-    
-    -- Criar partes
-    if characterType == "R15" then
-        -- Cabeça
-        CreatePart("Head", Color3.fromRGB(220, 200, 180), 0.5, 0.08, 0.26, 0.14, avatarContainer)
-        -- Tronco superior
-        CreatePart("UpperTorso", Color3.fromRGB(160, 140, 200), 0.5, 0.20, 0.35, 0.12, avatarContainer)
-        -- Tronco inferior
-        CreatePart("LowerTorso", Color3.fromRGB(140, 120, 180), 0.5, 0.32, 0.30, 0.10, avatarContainer)
-        -- Braços superiores
-        CreatePart("LeftUpperArm", Color3.fromRGB(180, 160, 140), 0.20, 0.20, 0.10, 0.10, avatarContainer)
-        CreatePart("RightUpperArm", Color3.fromRGB(180, 160, 140), 0.80, 0.20, 0.10, 0.10, avatarContainer)
-        -- Braços inferiores
-        CreatePart("LeftLowerArm", Color3.fromRGB(160, 140, 120), 0.17, 0.32, 0.08, 0.10, avatarContainer)
-        CreatePart("RightLowerArm", Color3.fromRGB(160, 140, 120), 0.83, 0.32, 0.08, 0.10, avatarContainer)
-        -- Mãos
-        CreatePart("LeftHand", Color3.fromRGB(200, 180, 160), 0.14, 0.44, 0.05, 0.05, avatarContainer)
-        CreatePart("RightHand", Color3.fromRGB(200, 180, 160), 0.86, 0.44, 0.05, 0.05, avatarContainer)
-        -- Pernas superiores
-        CreatePart("LeftUpperLeg", Color3.fromRGB(140, 120, 100), 0.35, 0.45, 0.12, 0.13, avatarContainer)
-        CreatePart("RightUpperLeg", Color3.fromRGB(140, 120, 100), 0.65, 0.45, 0.12, 0.13, avatarContainer)
-        -- Pernas inferiores
-        CreatePart("LeftLowerLeg", Color3.fromRGB(120, 100, 80), 0.35, 0.62, 0.10, 0.13, avatarContainer)
-        CreatePart("RightLowerLeg", Color3.fromRGB(120, 100, 80), 0.65, 0.62, 0.10, 0.13, avatarContainer)
-        -- Pés
-        CreatePart("LeftFoot", Color3.fromRGB(120, 100, 80), 0.33, 0.78, 0.08, 0.06, avatarContainer)
-        CreatePart("RightFoot", Color3.fromRGB(120, 100, 80), 0.67, 0.78, 0.08, 0.06, avatarContainer)
-    else -- R6
-        -- Cabeça
-        CreatePart("Head", Color3.fromRGB(220, 200, 180), 0.5, 0.10, 0.28, 0.16, avatarContainer)
-        -- Torso
-        CreatePart("Torso", Color3.fromRGB(160, 140, 200), 0.5, 0.26, 0.38, 0.20, avatarContainer)
-        -- Braços
-        CreatePart("LeftArm", Color3.fromRGB(180, 160, 140), 0.18, 0.26, 0.12, 0.20, avatarContainer)
-        CreatePart("RightArm", Color3.fromRGB(180, 160, 140), 0.82, 0.26, 0.12, 0.20, avatarContainer)
-        -- Pernas
-        CreatePart("LeftLeg", Color3.fromRGB(140, 120, 100), 0.35, 0.50, 0.14, 0.26, avatarContainer)
-        CreatePart("RightLeg", Color3.fromRGB(140, 120, 100), 0.65, 0.50, 0.14, 0.26, avatarContainer)
-    end
-    
-    -- Funções públicas
-    function previewFrame:HighlightPart(name)
-        HighlightPart(name)
-    end
-    
-    function previewFrame:GetSelected()
-        return selectedPart
-    end
-    
-    return previewFrame
-end
-
--- ========== LADO DIREITO - PREVIEW ==========
-local RightPanel = Library:Create("Frame", {
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0, 360, 0, 55),
-    Size = UDim2.new(0, 330, 1, -65),
-}, MainFrame)
-
--- Container do preview
-local PreviewContainer = Library:Create("Frame", {
+-- Status
+local StatusLabel = Library:Create("TextLabel", {
     BackgroundColor3 = Color3.fromRGB(20, 20, 25),
     BorderColor3 = Color3.fromRGB(40, 40, 50),
     BorderSizePixel = 1,
-    Position = UDim2.new(0, 0, 0, 0),
-    Size = UDim2.new(1, 0, 1, 0),
-    ClipsDescendants = true,
-}, RightPanel)
+    Position = UDim2.new(0, 0, 0, 185),
+    Size = UDim2.new(1, 0, 0, 60),
+    Font = Enum.Font.Ubuntu,
+    Text = "Selected: Head",
+    TextColor3 = Color3.fromRGB(100, 200, 100),
+    TextSize = 16,
+    TextXAlignment = Enum.TextXAlignment.Center,
+}, LeftPanel)
 
--- ========== INICIALIZAR ==========
+-- ========== LADO DIREITO - VIEWPORT 3D ==========
+local RightPanel = Library:Create("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 270, 0, 50),
+    Size = UDim2.new(1, -280, 1, -60),
+}, MainFrame)
+
+-- Criar viewport
+local viewport = CreateViewport(RightPanel)
+
+-- Inicializar personagem
 local characterType = DetectCharacterType()
-local partsList = {}
-
--- Definir partes disponíveis
-if characterType == "R15" then
-    partsList = {
-        "Head", "UpperTorso", "LowerTorso", 
-        "LeftUpperArm", "RightUpperArm", 
-        "LeftLowerArm", "RightLowerArm",
-        "LeftHand", "RightHand",
-        "LeftUpperLeg", "RightUpperLeg",
-        "LeftLowerLeg", "RightLowerLeg",
-        "LeftFoot", "RightFoot"
-    }
-else
-    partsList = {"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}
-end
-
--- Criar preview
-local characterPreview = CreateCharacterPreview(
-    PreviewContainer,
-    characterType,
-    function(partName)
-        -- Callback quando clicar no boneco
-        DropdownText.Text = partName
-        print("✅ Selecionado: " .. partName)
-        
-        -- Atualizar informações
-        InfoLabel.Text = "Selected: " .. partName
-    end
-)
+local characterModel = CreateRealR15Character(viewport, characterType, function(partName)
+    print("✅ Selecionado: " .. partName)
+    DropdownText.Text = partName
+    StatusLabel.Text = "Selected: " .. partName
+end)
 
 -- Preencher dropdown
-for _, part in pairs(partsList) do
+local parts = characterModel:GetParts()
+for _, part in pairs(parts) do
     local btn = Library:Create("TextButton", {
         BackgroundColor3 = Color3.fromRGB(25, 25, 30),
         BorderColor3 = Color3.fromRGB(40, 40, 50),
@@ -469,20 +476,15 @@ for _, part in pairs(partsList) do
     btn.MouseButton1Down:Connect(function()
         DropdownText.Text = part
         DropdownScroll.Visible = false
-        characterPreview:HighlightPart(part)
-        print("✅ Selecionado via dropdown: " .. part)
-        InfoLabel.Text = "Selected: " .. part
+        characterModel:HighlightPart(part)
+        print("✅ Selecionado: " .. part)
+        StatusLabel.Text = "Selected: " .. part
     end)
 end
 
--- Atualizar CanvasSize
-local totalHeight = #partsList * 27
+-- Ajustar tamanho do scroll
+local totalHeight = #parts * 27
 DropdownScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-if totalHeight > 120 then
-    DropdownScroll.Size = UDim2.new(1, 0, 0, 120)
-else
-    DropdownScroll.Size = UDim2.new(1, 0, 0, totalHeight)
-end
 
 -- Abrir/fechar dropdown
 DropdownButton.MouseButton1Down:Connect(function()
@@ -505,31 +507,11 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- ========== INFORMAÇÕES ==========
-local InfoLabel = Library:Create("TextLabel", {
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0, 290),
-    Size = UDim2.new(1, -20, 0, 30),
-    Font = Enum.Font.Ubuntu,
-    Text = "Selected: Head",
-    TextColor3 = Color3.fromRGB(100, 200, 100),
-    TextSize = 14,
-    TextXAlignment = Enum.TextXAlignment.Left,
-}, LeftPanel)
+-- Destacar parte inicial
+wait(0.5)
+characterModel:HighlightPart("Head")
 
--- ========== STATUS ==========
-Library:Create("TextLabel", {
-    BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0, 330),
-    Size = UDim2.new(1, -20, 0, 50),
-    Font = Enum.Font.Ubuntu,
-    Text = "💡 Click on the character or use dropdown\n   to select body part for aimbot",
-    TextColor3 = Color3.fromRGB(150, 150, 150),
-    TextSize = 12,
-    TextXAlignment = Enum.TextXAlignment.Left,
-}, LeftPanel)
-
--- ========== KEYBIND PARA ABRIR/FECHAR ==========
+-- ========== KEYBIND ==========
 local uiOpen = true
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Insert then
@@ -538,20 +520,11 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- ========== DESTACAR PARTE INICIAL ==========
-wait(0.5)
-characterPreview:HighlightPart("Head")
-InfoLabel.Text = "Selected: Head"
-
 print("============================================")
-print("✅ UI DE TESTE CARREGADA!")
+print("✅ UI 3D CARREGADA!")
 print("📌 Personagem: " .. characterType)
-print("📌 Partes disponíveis: " .. #partsList)
-print("💡 Clique no boneco ou use o dropdown")
+print("📌 Partes disponíveis: " .. #parts)
+print("💡 Clique no modelo 3D ou use o dropdown")
+print("🔄 Modelo rotaciona automaticamente")
 print("🔄 Pressione INSERT para abrir/fechar")
 print("============================================")
-
--- ========== MANTER UI ATUALIZADA ==========
-game:GetService("RunService").Heartbeat:Connect(function()
-    -- Atualizar posição da seta do dropdown
-end)
