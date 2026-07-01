@@ -1,0 +1,557 @@
+-- ============================================
+-- UI DE TESTE - SELECIONAR PARTE DO CORPO
+-- ============================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- ========== BIBLIOTECA UI SIMPLIFICADA ==========
+local Library = {}
+Library.__index = Library
+
+function Library:Create(className, properties, parent)
+    local obj = Instance.new(className)
+    for prop, value in pairs(properties) do
+        obj[prop] = value
+    end
+    if parent then obj.Parent = parent end
+    return obj
+end
+
+function Library:Tween(obj, info, properties)
+    TweenService:Create(obj, info, properties):Play()
+end
+
+-- ========== FUNÇÕES DE DETECÇÃO ==========
+local function DetectCharacterType()
+    local char = LocalPlayer.Character
+    if not char then return "R6" end
+    
+    -- Verifica se tem partes R15
+    local r15Parts = {"UpperTorso", "LowerTorso", "LeftUpperArm", "RightUpperArm", 
+                      "LeftLowerArm", "RightLowerArm", "LeftUpperLeg", "RightUpperLeg", 
+                      "LeftLowerLeg", "RightLowerLeg"}
+    
+    for _, part in pairs(r15Parts) do
+        if char:FindFirstChild(part) then
+            return "R15"
+        end
+    end
+    return "R6"
+end
+
+-- ========== CRIAR UI PRINCIPAL ==========
+local ScreenGui = Library:Create("ScreenGui", {
+    Name = "TestUI",
+    ResetOnSpawn = false,
+    IgnoreGuiInset = true,
+    ZIndexBehavior = Enum.ZIndexBehavior.Global,
+}, game:GetService("CoreGui"))
+
+-- Fazer dragável
+local function MakeDraggable(gui)
+    local dragging = false
+    local dragInput = nil
+    local dragStart = nil
+    local startPos = nil
+    
+    gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = gui.Position
+        end
+    end)
+    
+    gui.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            gui.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ========== MAIN FRAME ==========
+local MainFrame = Library:Create("Frame", {
+    Name = "MainFrame",
+    BackgroundColor3 = Color3.fromRGB(15, 15, 20),
+    BorderColor3 = Color3.fromRGB(50, 50, 60),
+    BorderSizePixel = 1,
+    Position = UDim2.new(0.5, -350, 0.5, -250),
+    Size = UDim2.new(0, 700, 0, 500),
+    ClipsDescendants = true,
+}, ScreenGui)
+
+MakeDraggable(MainFrame)
+
+-- Título
+Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0.5, 0, 0, 10),
+    Size = UDim2.new(1, -20, 0, 30),
+    Font = Enum.Font.Ubuntu,
+    Text = "🎯 Aimbot Test - Character Selector",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 18,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    AnchorPoint = Vector2.new(0.5, 0),
+}, MainFrame)
+
+-- Linha separadora
+Library:Create("Frame", {
+    BackgroundColor3 = Color3.fromRGB(50, 50, 60),
+    Position = UDim2.new(0, 10, 0, 45),
+    Size = UDim2.new(1, -20, 0, 1),
+}, MainFrame)
+
+-- ========== LADO ESQUERDO - CONFIGURAÇÕES ==========
+local LeftPanel = Library:Create("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 55),
+    Size = UDim2.new(0, 340, 1, -65),
+}, MainFrame)
+
+-- Container de seleção
+local SelectorContainer = Library:Create("Frame", {
+    BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+    BorderColor3 = Color3.fromRGB(40, 40, 50),
+    BorderSizePixel = 1,
+    Position = UDim2.new(0, 0, 0, 0),
+    Size = UDim2.new(1, 0, 0, 280),
+    ClipsDescendants = true,
+}, LeftPanel)
+
+-- Título do seletor
+Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0.5, 0, 0, 8),
+    Size = UDim2.new(1, -20, 0, 25),
+    Font = Enum.Font.Ubuntu,
+    Text = "🎯 Select Body Part",
+    TextColor3 = Color3.fromRGB(200, 200, 200),
+    TextSize = 16,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    AnchorPoint = Vector2.new(0.5, 0),
+}, SelectorContainer)
+
+-- Dropdown personalizado
+local DropdownContainer = Library:Create("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 40),
+    Size = UDim2.new(1, -20, 0, 45),
+}, SelectorContainer)
+
+Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 5, 0, 0),
+    Size = UDim2.new(1, 0, 0, 20),
+    Font = Enum.Font.Ubuntu,
+    Text = "Part:",
+    TextColor3 = Color3.fromRGB(150, 150, 150),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, DropdownContainer)
+
+local DropdownButton = Library:Create("TextButton", {
+    BackgroundColor3 = Color3.fromRGB(25, 25, 30),
+    BorderColor3 = Color3.fromRGB(40, 40, 50),
+    BorderSizePixel = 1,
+    Position = UDim2.new(0, 0, 0, 20),
+    Size = UDim2.new(1, 0, 0, 22),
+    Text = "",
+    AutoButtonColor = false,
+}, DropdownContainer)
+
+local DropdownText = Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 8, 0, 0),
+    Size = UDim2.new(1, -30, 1, 0),
+    Font = Enum.Font.Ubuntu,
+    Text = "Head",
+    TextColor3 = Color3.fromRGB(200, 200, 200),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, DropdownButton)
+
+local DropdownArrow = Library:Create("ImageLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(1, -18, 0.5, 0),
+    Size = UDim2.new(0, 12, 0, 12),
+    Image = "rbxassetid://6034818370",
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    ImageColor3 = Color3.fromRGB(150, 150, 150),
+}, DropdownButton)
+
+-- Dropdown Scroll
+local DropdownScroll = Library:Create("ScrollingFrame", {
+    BackgroundColor3 = Color3.fromRGB(25, 25, 30),
+    BorderColor3 = Color3.fromRGB(40, 40, 50),
+    BorderSizePixel = 1,
+    Position = UDim2.new(0, 0, 0, 44),
+    Size = UDim2.new(1, 0, 0, 120),
+    Visible = false,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    ScrollBarThickness = 2,
+    ClipsDescendants = true,
+    ZIndex = 5,
+}, DropdownContainer)
+
+local DropdownList = Library:Create("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 2),
+}, DropdownScroll)
+
+-- ========== CRIAR BONECO ==========
+local function CreateCharacterPreview(parent, characterType, onPartClick)
+    local previewFrame = Library:Create("Frame", {
+        BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+        BorderColor3 = Color3.fromRGB(40, 40, 50),
+        BorderSizePixel = 1,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        ClipsDescendants = true,
+    }, parent)
+    
+    -- Título
+    Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, 0, 0, 8),
+        Size = UDim2.new(1, -20, 0, 25),
+        Font = Enum.Font.Ubuntu,
+        Text = "👤 " .. characterType .. " Character",
+        TextColor3 = Color3.fromRGB(200, 200, 200),
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        AnchorPoint = Vector2.new(0.5, 0),
+    }, previewFrame)
+    
+    -- Container do boneco
+    local avatarContainer = Library:Create("Frame", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 35),
+        Size = UDim2.new(1, -20, 1, -45),
+    }, previewFrame)
+    
+    -- Mapa das partes
+    local partHighlights = {}
+    local selectedPart = nil
+    
+    -- Função para criar uma parte
+    local function CreatePart(name, color, x, y, w, h, parent)
+        local part = Library:Create("TextButton", {
+            BackgroundColor3 = color,
+            BorderColor3 = Color3.fromRGB(60, 60, 70),
+            BorderSizePixel = 1,
+            Position = UDim2.new(x - w/2, 0, y - h/2, 0),
+            Size = UDim2.new(w, 0, h, 0),
+            Text = "",
+            AutoButtonColor = false,
+            Name = name,
+            ZIndex = 2,
+        }, parent)
+        
+        -- Label para mostrar nome
+        local label = Library:Create("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(1, 0, 1, 0),
+            Font = Enum.Font.Ubuntu,
+            Text = name,
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = 7,
+            TextScaled = true,
+            TextWrapped = true,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Visible = false,
+            ZIndex = 3,
+        }, part)
+        
+        -- Hover
+        part.MouseEnter:Connect(function()
+            label.Visible = true
+            if selectedPart ~= name then
+                part.BorderColor3 = Color3.fromRGB(255, 255, 255)
+                part.BorderSizePixel = 2
+            end
+        end)
+        
+        part.MouseLeave:Connect(function()
+            label.Visible = false
+            if selectedPart ~= name then
+                part.BorderColor3 = Color3.fromRGB(60, 60, 70)
+                part.BorderSizePixel = 1
+            end
+        end)
+        
+        -- Click
+        part.MouseButton1Down:Connect(function()
+            if onPartClick then
+                onPartClick(name)
+            end
+            HighlightPart(name)
+        end)
+        
+        partHighlights[name] = {
+            part = part,
+            originalColor = color,
+            label = label
+        }
+        
+        return part
+    end
+    
+    -- Função para destacar
+    function HighlightPart(name)
+        -- Reset
+        for _, data in pairs(partHighlights) do
+            data.part.BackgroundColor3 = data.originalColor
+            data.part.BorderColor3 = Color3.fromRGB(60, 60, 70)
+            data.part.BorderSizePixel = 1
+            data.label.Visible = false
+        end
+        
+        -- Highlight
+        if name and partHighlights[name] then
+            local data = partHighlights[name]
+            data.part.BackgroundColor3 = Color3.fromRGB(84, 101, 255)
+            data.part.BorderColor3 = Color3.fromRGB(255, 255, 255)
+            data.part.BorderSizePixel = 3
+            data.label.Visible = true
+            selectedPart = name
+        end
+    end
+    
+    -- Criar partes
+    if characterType == "R15" then
+        -- Cabeça
+        CreatePart("Head", Color3.fromRGB(220, 200, 180), 0.5, 0.08, 0.26, 0.14, avatarContainer)
+        -- Tronco superior
+        CreatePart("UpperTorso", Color3.fromRGB(160, 140, 200), 0.5, 0.20, 0.35, 0.12, avatarContainer)
+        -- Tronco inferior
+        CreatePart("LowerTorso", Color3.fromRGB(140, 120, 180), 0.5, 0.32, 0.30, 0.10, avatarContainer)
+        -- Braços superiores
+        CreatePart("LeftUpperArm", Color3.fromRGB(180, 160, 140), 0.20, 0.20, 0.10, 0.10, avatarContainer)
+        CreatePart("RightUpperArm", Color3.fromRGB(180, 160, 140), 0.80, 0.20, 0.10, 0.10, avatarContainer)
+        -- Braços inferiores
+        CreatePart("LeftLowerArm", Color3.fromRGB(160, 140, 120), 0.17, 0.32, 0.08, 0.10, avatarContainer)
+        CreatePart("RightLowerArm", Color3.fromRGB(160, 140, 120), 0.83, 0.32, 0.08, 0.10, avatarContainer)
+        -- Mãos
+        CreatePart("LeftHand", Color3.fromRGB(200, 180, 160), 0.14, 0.44, 0.05, 0.05, avatarContainer)
+        CreatePart("RightHand", Color3.fromRGB(200, 180, 160), 0.86, 0.44, 0.05, 0.05, avatarContainer)
+        -- Pernas superiores
+        CreatePart("LeftUpperLeg", Color3.fromRGB(140, 120, 100), 0.35, 0.45, 0.12, 0.13, avatarContainer)
+        CreatePart("RightUpperLeg", Color3.fromRGB(140, 120, 100), 0.65, 0.45, 0.12, 0.13, avatarContainer)
+        -- Pernas inferiores
+        CreatePart("LeftLowerLeg", Color3.fromRGB(120, 100, 80), 0.35, 0.62, 0.10, 0.13, avatarContainer)
+        CreatePart("RightLowerLeg", Color3.fromRGB(120, 100, 80), 0.65, 0.62, 0.10, 0.13, avatarContainer)
+        -- Pés
+        CreatePart("LeftFoot", Color3.fromRGB(120, 100, 80), 0.33, 0.78, 0.08, 0.06, avatarContainer)
+        CreatePart("RightFoot", Color3.fromRGB(120, 100, 80), 0.67, 0.78, 0.08, 0.06, avatarContainer)
+    else -- R6
+        -- Cabeça
+        CreatePart("Head", Color3.fromRGB(220, 200, 180), 0.5, 0.10, 0.28, 0.16, avatarContainer)
+        -- Torso
+        CreatePart("Torso", Color3.fromRGB(160, 140, 200), 0.5, 0.26, 0.38, 0.20, avatarContainer)
+        -- Braços
+        CreatePart("LeftArm", Color3.fromRGB(180, 160, 140), 0.18, 0.26, 0.12, 0.20, avatarContainer)
+        CreatePart("RightArm", Color3.fromRGB(180, 160, 140), 0.82, 0.26, 0.12, 0.20, avatarContainer)
+        -- Pernas
+        CreatePart("LeftLeg", Color3.fromRGB(140, 120, 100), 0.35, 0.50, 0.14, 0.26, avatarContainer)
+        CreatePart("RightLeg", Color3.fromRGB(140, 120, 100), 0.65, 0.50, 0.14, 0.26, avatarContainer)
+    end
+    
+    -- Funções públicas
+    function previewFrame:HighlightPart(name)
+        HighlightPart(name)
+    end
+    
+    function previewFrame:GetSelected()
+        return selectedPart
+    end
+    
+    return previewFrame
+end
+
+-- ========== LADO DIREITO - PREVIEW ==========
+local RightPanel = Library:Create("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 360, 0, 55),
+    Size = UDim2.new(0, 330, 1, -65),
+}, MainFrame)
+
+-- Container do preview
+local PreviewContainer = Library:Create("Frame", {
+    BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+    BorderColor3 = Color3.fromRGB(40, 40, 50),
+    BorderSizePixel = 1,
+    Position = UDim2.new(0, 0, 0, 0),
+    Size = UDim2.new(1, 0, 1, 0),
+    ClipsDescendants = true,
+}, RightPanel)
+
+-- ========== INICIALIZAR ==========
+local characterType = DetectCharacterType()
+local partsList = {}
+
+-- Definir partes disponíveis
+if characterType == "R15" then
+    partsList = {
+        "Head", "UpperTorso", "LowerTorso", 
+        "LeftUpperArm", "RightUpperArm", 
+        "LeftLowerArm", "RightLowerArm",
+        "LeftHand", "RightHand",
+        "LeftUpperLeg", "RightUpperLeg",
+        "LeftLowerLeg", "RightLowerLeg",
+        "LeftFoot", "RightFoot"
+    }
+else
+    partsList = {"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}
+end
+
+-- Criar preview
+local characterPreview = CreateCharacterPreview(
+    PreviewContainer,
+    characterType,
+    function(partName)
+        -- Callback quando clicar no boneco
+        DropdownText.Text = partName
+        print("✅ Selecionado: " .. partName)
+        
+        -- Atualizar informações
+        InfoLabel.Text = "Selected: " .. partName
+    end
+)
+
+-- Preencher dropdown
+for _, part in pairs(partsList) do
+    local btn = Library:Create("TextButton", {
+        BackgroundColor3 = Color3.fromRGB(25, 25, 30),
+        BorderColor3 = Color3.fromRGB(40, 40, 50),
+        BorderSizePixel = 1,
+        Size = UDim2.new(1, -4, 0, 25),
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = 6,
+    }, DropdownScroll)
+    
+    local btnText = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 8, 0, 0),
+        Size = UDim2.new(1, -8, 1, 0),
+        Font = Enum.Font.Ubuntu,
+        Text = part,
+        TextColor3 = Color3.fromRGB(150, 150, 150),
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 6,
+    }, btn)
+    
+    btn.MouseEnter:Connect(function()
+        btnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        btnText.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end)
+    
+    btn.MouseButton1Down:Connect(function()
+        DropdownText.Text = part
+        DropdownScroll.Visible = false
+        characterPreview:HighlightPart(part)
+        print("✅ Selecionado via dropdown: " .. part)
+        InfoLabel.Text = "Selected: " .. part
+    end)
+end
+
+-- Atualizar CanvasSize
+local totalHeight = #partsList * 27
+DropdownScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+if totalHeight > 120 then
+    DropdownScroll.Size = UDim2.new(1, 0, 0, 120)
+else
+    DropdownScroll.Size = UDim2.new(1, 0, 0, totalHeight)
+end
+
+-- Abrir/fechar dropdown
+DropdownButton.MouseButton1Down:Connect(function()
+    DropdownScroll.Visible = not DropdownScroll.Visible
+end)
+
+-- Fechar dropdown ao clicar fora
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if DropdownScroll.Visible then
+            local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+            local scrollPos = DropdownScroll.AbsolutePosition
+            local scrollSize = DropdownScroll.AbsoluteSize
+            
+            if not (mousePos.X >= scrollPos.X and mousePos.X <= scrollPos.X + scrollSize.X and
+                    mousePos.Y >= scrollPos.Y and mousePos.Y <= scrollPos.Y + scrollSize.Y) then
+                DropdownScroll.Visible = false
+            end
+        end
+    end
+end)
+
+-- ========== INFORMAÇÕES ==========
+local InfoLabel = Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 290),
+    Size = UDim2.new(1, -20, 0, 30),
+    Font = Enum.Font.Ubuntu,
+    Text = "Selected: Head",
+    TextColor3 = Color3.fromRGB(100, 200, 100),
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, LeftPanel)
+
+-- ========== STATUS ==========
+Library:Create("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 330),
+    Size = UDim2.new(1, -20, 0, 50),
+    Font = Enum.Font.Ubuntu,
+    Text = "💡 Click on the character or use dropdown\n   to select body part for aimbot",
+    TextColor3 = Color3.fromRGB(150, 150, 150),
+    TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, LeftPanel)
+
+-- ========== KEYBIND PARA ABRIR/FECHAR ==========
+local uiOpen = true
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Insert then
+        uiOpen = not uiOpen
+        ScreenGui.Enabled = uiOpen
+    end
+end)
+
+-- ========== DESTACAR PARTE INICIAL ==========
+wait(0.5)
+characterPreview:HighlightPart("Head")
+InfoLabel.Text = "Selected: Head"
+
+print("============================================")
+print("✅ UI DE TESTE CARREGADA!")
+print("📌 Personagem: " .. characterType)
+print("📌 Partes disponíveis: " .. #partsList)
+print("💡 Clique no boneco ou use o dropdown")
+print("🔄 Pressione INSERT para abrir/fechar")
+print("============================================")
+
+-- ========== MANTER UI ATUALIZADA ==========
+game:GetService("RunService").Heartbeat:Connect(function()
+    -- Atualizar posição da seta do dropdown
+end)
